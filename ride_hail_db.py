@@ -20,6 +20,16 @@ async def create_db():
                 password TEXT,
                 car_type TEXT,
                 plate_no TEXT)''')
+        await cur.execute('''CREATE TABLE IF NOT EXISTS Ride (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                driver_id TEXT,
+                passenger_id TEXT,
+                start TEXT,
+                end TEXT,
+                distance TEXT,
+                time TEXT,
+                price TEXT,
+                date TEXT)''')
         await conn.commit()
    
         
@@ -85,7 +95,25 @@ async def get_all_drivers_id():
         result = await cur.fetchall()
         return result
     
+async def insert_ride_data(driver_id: str, passenger_id: str, start: str, end: str,distance: str, time: str, price: str, date: str):
+    async with aiosqlite.connect('ride_hail.db') as conn:
+        cur = await conn.cursor()
+        await cur.execute('''INSERT INTO Ride (driver_id, passenger_id, start, end,distance, time, price, date) VALUES (?,?,?,?,?,?,?,?)''', (driver_id, passenger_id, start, end,distance, time, price, date))
+        await conn.commit()
 
+async def get_passenger_rides(id: str):
+    async with aiosqlite.connect('ride_hail.db') as conn:
+        cur = await conn.cursor()
+        await cur.execute('''SELECT * FROM Ride WHERE passenger_id = ?''', (id,))
+        result = await cur.fetchall()
+        return result
+    
+async def get_driver_rides(id: str):
+    async with aiosqlite.connect('ride_hail.db') as conn:
+        cur = await conn.cursor()
+        await cur.execute('''SELECT * FROM Ride WHERE driver_id = ?''', (id,))
+        result = await cur.fetchall()
+        return result
 
 asyncio.run(create_db())
 
