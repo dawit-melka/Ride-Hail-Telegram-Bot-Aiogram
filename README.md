@@ -5,12 +5,12 @@ The Ride Hail Telegram Bot is a Python-based Telegram bot built with the Aiogram
 
 ## Features
 
-    ### Passenger Features:
+###   Passenger Features:
         - Request a ride by providing location and destination details.
         - Receive notifications when a nearby driver accepts the ride.
         - Start and complete the ride with ease.
 
-    ### Driver Features:
+###   Driver Features:
         - Receive ride requests from nearby passengers.
         - Accept or decline ride requests.
         - Provide details about the accepted ride.
