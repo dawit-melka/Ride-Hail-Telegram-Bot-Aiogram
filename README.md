@@ -27,7 +27,7 @@ The Ride Hail Telegram Bot is a Python-based Telegram bot built with the Aiogram
 1) Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/ride-hail-bot.git
+git clone https://github.com/dawit-melka/Ride-Hail-Telegram-Bot-Aiogram.git
 ```
 
 
