@@ -1,18 +1,16 @@
-import logging, asyncio, sys, os
+import logging, asyncio, sys, os, random, datetime
 from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.types import ReplyKeyboardRemove, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import CommandStart
 
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-# from aiogram.client.session.aiohttp import AiohttpSession
 from dotenv import load_dotenv
 
-from ride_hail_db import insert_passenger_data, insert_driver_data, get_driver_data, get_passenger_data, update_user_data, get_user_by_id, get_all_drivers_id, insert_ride_data, get_passenger_rides, get_driver_rides
+from ride_hail_db import insert_passenger_data, insert_driver_data, get_driver_data, get_passenger_data, update_user_data
+from ride_hail_db import get_user_by_id, get_all_drivers_id, insert_ride_data, get_passenger_rides, get_driver_rides
 from aiogram.handlers.callback_query import CallbackQueryHandler
 
-import random
-import datetime
 load_dotenv()
 
 # Initialize Dispatcher and Bot
@@ -21,7 +19,7 @@ dp = Dispatcher()
 
 # session = AiohttpSession(proxy="http://proxy.server:3128")
 token = os.getenv("TOKEN2")
-# token = "6852134606:AAFiyI-UHrIow3qPq08_SF1tYUylPkT-Lgg"
+
 bot = Bot(token=token, parse_mode='HTML')
 
 # Registration
@@ -46,7 +44,7 @@ class PassengerChoice(StatesGroup):
     choice = State()
     what_to_edit = State()
     edit_data = State()
-    
+
 class DriverForm(StatesGroup):
     plate_number = State()
     car_type = State()
@@ -98,7 +96,7 @@ async def Command_start(message: types.Message, state: FSMContext):
                     ))
     else:
         await state.set_state(LoginForm.register)
-        
+
         await message.answer(
             "Welcome to Ride Hail. Please Register",
             reply_markup=ReplyKeyboardMarkup(
@@ -107,85 +105,14 @@ async def Command_start(message: types.Message, state: FSMContext):
                         KeyboardButton(text="Register"),
                     ]
                 ],
-                resize_keyboard=True   
+                resize_keyboard=True
             )
         )
-'''
-@form_router.message(LoginForm.role, F.text.casefold() == "passenger")
-async def process_passenger_login_email(message: types.Message, state: FSMContext):
-    await state.update_data(role="passenger")
-    await state.set_state(LoginForm.email)
-    await message.answer("Please send your email to login",
-                        reply_markup=ReplyKeyboardRemove())
-
-
-@form_router.message(LoginForm.role, F.text.casefold() == "driver")
-async def process_driver_login_email(message: types.Message, state: FSMContext):
-    await state.update_data(role="driver")
-    await state.set_state(LoginForm.email)
-    await message.answer("Please send your email to login",
-                        reply_markup=ReplyKeyboardRemove())
-
-@form_router.message(LoginForm.email)
-async def process_login_password(message: types.Message, state: FSMContext):
-    await state.update_data(email=message.text)
-    await state.set_state(LoginForm.password)
-    await message.answer("Please send your password",
-                        reply_markup=ReplyKeyboardRemove())
-
-@form_router.message(LoginForm.password)
-async def authenticate_user(message: types.Message, state: FSMContext):
-    await state.update_data(password=message.text)
-    # await state.set_state(LoginForm.isLoggedIn)
-    data = await state.get_data()
-    role = data.get("role")
-    email = data.get("email")
-    password = data.get("password")
-    
-    # check from the database and authenticate
-    
-    await state.update_data(isLoggedIn=True)
-    if role == 'passenger':
-        user_data = await get_passenger_data(email,password)
-    else:
-        user_data = await get_driver_data(email,password)
-    
-    if user_data != None:
-        await state.update_data(userId = user_data[0])
-        if role == "passenger":
-            await state.set_state(PassengerChoice.choice)
-            await message.answer(f"You have successfully logged in{user_data}",
-                        reply_markup=ReplyKeyboardMarkup(
-                            keyboard=[
-                                [
-                                    KeyboardButton(text="Manage Profile"),
-                                    KeyboardButton(text="Book Ride")
-                                ],
-                                [
-                                     KeyboardButton(text="Ride History"),
-                                 ]
-                            ],
-                            resize_keyboard=True,
-                        ))
-        else:
-            await state.set_state(DriverForm.edit_driver_profile)
-            await message.answer(f"You have successfully logged in {user_data}",
-                                 reply_markup=ReplyKeyboardMarkup(
-                                     keyboard=[
-                                         [KeyboardButton(text="Edit Profile")]
-                                     ],
-                                     resize_keyboard=True,
-                                 ))
-    else:
-        await state.set_state(LoginForm.email)
-        await message.answer(f"Wrong email or password \nPlease enter your email again. ",
-                        reply_markup=ReplyKeyboardRemove())
-'''    
 
 @form_router.message(PassengerChoice.choice, F.text.casefold() == "book ride")
 async def book_ride_location(message: types.Message, state: FSMContext):
     await state.set_state(Ride.location)
-    await message.answer("Please send your location", 
+    await message.answer("Please send your location",
                          reply_markup=ReplyKeyboardRemove())
 
 
@@ -194,9 +121,9 @@ async def book_ride_location(message: types.Message, state: FSMContext):
 async def book_ride_destination(message: types.Message, state: FSMContext):
     await state.update_data(location=message.text)
     await state.set_state(Ride.destination)
-    await message.answer("Please send your destination", 
+    await message.answer("Please send your destination",
                          reply_markup=ReplyKeyboardRemove())
-    
+
 @form_router.message(Ride.destination)
 async def confirm_ride(message: types.Message, state: FSMContext):
     await state.update_data(destination=message.text)
@@ -228,21 +155,20 @@ async def wait_driver(message: types.Message, state: FSMContext):
     name = f"{passenger_data[1]} {passenger_data[2]}"
     phone = passenger_data[3]
     price = random.randint(150, 500)
-    
+
     driver_ids = await get_all_drivers_id()
     passenger_info = f"Passenger Name: {name}\nPhone: {phone}\nLocation: {location}\nDestination: {destination}\nPrice: {price}"
-    for userId in driver_ids: 
+    for userId in driver_ids:
         location = "-".join(location.split())
         destination = "-".join(destination.split())
         keyboard = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Accept', callback_data=f'{message.from_user.id} {location} {destination} {price}')]])
         sent_message = await bot.send_message(chat_id=userId[0],text=passenger_info, reply_markup=keyboard)
-        
+
         # Store the message ID for each driver
         driver_messages[userId[0]] = sent_message.message_id
     await state.set_state(Ride.d_rate)
 
 
-# @form_router.callback_query(Text("accepted"))
 @form_router.callback_query()
 async def accept_ride(q: types.CallbackQuery, state: FSMContext):
     driver_data = await get_user_by_id("Driver", q.from_user.id)
@@ -304,7 +230,7 @@ async def complete_ride(message: types.Message, state: FSMContext):
     price = data.get('price')
     date = datetime.datetime.now().strftime("%d-%b-%Y")
     await insert_ride_data(driver_id, passenger_id, location, destination, distance, time, price, date)
-    
+
     await message.answer(f"Ride Completed!\nFrom {location} To {destination}\nDuration: {time} min\nDistance: {distance} km\nPrice: {price} ETB\n\n Please Rate the Passenger",
                          reply_markup=ReplyKeyboardMarkup(
                              keyboard=[
@@ -317,7 +243,7 @@ async def complete_ride(message: types.Message, state: FSMContext):
                                  ]
                              ],
                              resize_keyboard=True,
-                         )) 
+                         ))
     await bot.send_message(chat_id=passenger_id, text=f"Ride Completed!\nFrom {location} To {destination}\nDuration: {time} min\nDistance: {distance} km\nPrice: {price} ETB\n\n Please Rate the Driver",
                            reply_markup=ReplyKeyboardMarkup(
                              keyboard=[
@@ -330,12 +256,12 @@ async def complete_ride(message: types.Message, state: FSMContext):
                                  ]
                              ],
                              resize_keyboard=True,
-                         )) 
+                         ))
 
 @form_router.message(Ride.p_rate, lambda message: message.text in ["1", "2", "3", "4", "5"])
 async def rate_passenger(message: types.Message, state: FSMContext):
     await state.set_state(DriverForm.edit_driver_profile)
-    await message.answer("Thank you for using Ride Hail!", 
+    await message.answer("Thank you for using Ride Hail!",
                          reply_markup=ReplyKeyboardMarkup(
                              keyboard=[
                                  [
@@ -348,7 +274,7 @@ async def rate_passenger(message: types.Message, state: FSMContext):
 @form_router.message(Ride.d_rate, lambda message: message.text in ["1", "2", "3", "4", "5"])
 async def rate_passenger(message: types.Message, state: FSMContext):
     await state.set_state(PassengerChoice.choice)
-    await message.answer("Thank you for using Ride Hail!", 
+    await message.answer("Thank you for using Ride Hail!",
                          reply_markup=ReplyKeyboardMarkup(
                              keyboard=[
                                  [
@@ -362,14 +288,14 @@ async def rate_passenger(message: types.Message, state: FSMContext):
                              resize_keyboard=True
                          ))
 
-    
+
 @form_router.message(PassengerChoice.choice, F.text.casefold() == "manage profile")
 async def manage_passenger_profile(message: types.Message, state: FSMContext):
     await state.set_state(PassengerChoice.what_to_edit)
     await message.answer("What do you want to edit?", reply_markup=ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text='first_name'), KeyboardButton(text='last_name')],
-            [KeyboardButton(text='phone'), KeyboardButton(text='email')], 
+            [KeyboardButton(text='phone'), KeyboardButton(text='email')],
             [KeyboardButton(text='password')],
         ],
         resize_keyboard=True,
@@ -382,9 +308,11 @@ async def passenger_ride_history(message: types.Message, state: FSMContext):
     ride_history = ""
     if len(rides) == 0:
         ride_history = "No ride history!"
-    
+
     for ride in rides:
         driver = await get_user_by_id("Driver", ride[1])
+        print(driver)
+        print(ride[1])
         driver_name = f"{driver[1]} {driver[2]}"
         ride_info = f"Driver: {driver_name}\nDate: {ride[8]}\nPick up: {ride[3]}\nDrop off: {ride[4]}\nPrice: {ride[7]}\n\n"
         ride_history += ride_info
@@ -399,22 +327,22 @@ async def passenger_ride_history(message: types.Message, state: FSMContext):
         resize_keyboard=True
     ))
 
-@form_router.message(PassengerChoice.what_to_edit)
+@form_router.message(PassengerChoice.what_to_edit, lambda message: message.text in ["first_name", "last_name", "phone", "email", "password"])
 async def edit_passenger_data(message: types.Message, state: FSMContext):
     await state.update_data(what_to_edit = message.text)
     await state.set_state(PassengerChoice.edit_data)
     data = await state.get_data()
-    await message.answer(f"Please send new {data.get('what_to_edit')}", 
+    await message.answer(f"Please send new {data.get('what_to_edit')}",
                          reply_markup=ReplyKeyboardRemove())
-    
+
 @form_router.message(PassengerChoice.edit_data)
 async def process_edit_passenger_data(message: types.Message, state: FSMContext):
     new_val = message.text
     await state.set_state(PassengerChoice.choice)
     data = await state.get_data()
     new_data = await update_user_data('Passenger', message.from_user.id, data.get('what_to_edit'), new_val)
-    
-    await message.answer(f"You have successfully updated your {data.get('what_to_edit')} \n {new_data}", 
+
+    await message.answer(f"You have successfully updated your {data.get('what_to_edit')} \n {new_data}",
                          reply_markup=ReplyKeyboardMarkup(
                             keyboard=[
                                 [
@@ -429,14 +357,14 @@ async def process_edit_passenger_data(message: types.Message, state: FSMContext)
                         ))
 
 
-    
+
 @form_router.message(DriverForm.edit_driver_profile, F.text.casefold() == "manage profile")
 async def manage_driver_profile(message: types.Message, state: FSMContext):
     await state.set_state(DriverForm.what_to_edit)
     await message.answer("What do you want to edit?", reply_markup=ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text='first_name'), KeyboardButton(text='last_name')],
-            [KeyboardButton(text='phone'), KeyboardButton(text='email')], 
+            [KeyboardButton(text='phone'), KeyboardButton(text='email')],
             [KeyboardButton(text='password')],
         ],
         resize_keyboard=True,
@@ -457,7 +385,7 @@ async def driver_ride_history(message: types.Message, state: FSMContext):
         total += int(ride[7])
     await state.set_state(DriverForm.edit_driver_profile)
     await message.answer(f"<b><u>RIDE HISTORY</u></b>\n\n{ride_history}<b>Total: {total} ETB</b>",
-                         
+
                          reply_markup=ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="Manage Profile"),
@@ -466,22 +394,22 @@ async def driver_ride_history(message: types.Message, state: FSMContext):
         resize_keyboard=True
     ))
 
-@form_router.message(DriverForm.what_to_edit)
+@form_router.message(DriverForm.what_to_edit, lambda message: message.text in ["first_name", "last_name", "phone", "email", "password"])
 async def edit_driver_data(message: types.Message, state: FSMContext):
     await state.update_data(what_to_edit = message.text)
     await state.set_state(DriverForm.edit_data)
     data = await state.get_data()
-    await message.answer(f"Please send new {data.get('what_to_edit')}", 
+    await message.answer(f"Please send new {data.get('what_to_edit')}",
                          reply_markup=ReplyKeyboardRemove())
-    
+
 @form_router.message(DriverForm.edit_data)
 async def process_edit_driver_data(message: types.Message, state: FSMContext):
     new_val = message.text
     await state.set_state(DriverForm.edit_driver_profile)
     data = await state.get_data()
     new_data = await update_user_data('Driver', message.from_user.id, data.get('what_to_edit'), new_val)
-    
-    await message.answer(f"You have successfully updated your {data.get('what_to_edit')} \n {new_data}", 
+
+    await message.answer(f"You have successfully updated your {data.get('what_to_edit')} \n {new_data}",
                          reply_markup=ReplyKeyboardMarkup(
                             keyboard=[
                                 [
@@ -494,7 +422,7 @@ async def process_edit_driver_data(message: types.Message, state: FSMContext):
 
 @form_router.message(LoginForm.register)
 async def process_registration(message: types.Message, state: FSMContext):
-    
+
     await state.update_data(has_account="no")
     await state.set_state(RegisterForm.role)
     await message.answer("Please answer the following questions to register!\nAre you Passenger or Driver?",
@@ -508,7 +436,7 @@ async def process_registration(message: types.Message, state: FSMContext):
                                 resize_keyboard=True,
                             ))
 
-    
+
 @form_router.message(RegisterForm.role, F.text.casefold() == "driver")
 async def process_driver_register_first_name(message: types.Message, state: FSMContext):
     await state.update_data(role="driver")
@@ -575,12 +503,12 @@ async def process_passenger_registration(message: types.Message, state: FSMConte
     isPassenger = data.get('role') == 'passenger'
     if isPassenger:
         userId = message.from_user.id
-        first_name = data.get('first_name') 
+        first_name = data.get('first_name')
         last_name = data.get('last_name')
         phone = data.get('phone')
         email = data.get('email')
         password = data.get('password')
-        
+
 
         await insert_passenger_data(userId, first_name, last_name, phone, email, password)
         await state.set_state(PassengerChoice.choice)
@@ -603,21 +531,21 @@ async def process_passenger_registration(message: types.Message, state: FSMConte
     else:
         await state.set_state(DriverForm.car_type)
         await message.answer("What is your car color and model?", reply_markup=ReplyKeyboardRemove())
-        
+
 @form_router.message(DriverForm.car_type)
 async def regiser_car(message: types.Message, state: FSMContext):
     await state.update_data(car_type = message.text)
     await state.set_state(DriverForm.plate_number)
     await message.answer("What is your car plate number?", reply_markup=ReplyKeyboardRemove())
 
-   
-   
+
+
 @form_router.message(DriverForm.plate_number)
 async def process_driver_registration(message: types.Message, state: FSMContext):
     await state.update_data(plate_number=message.text)
     data = await state.get_data()
     userId = message.from_user.id
-    first_name = data.get('first_name') 
+    first_name = data.get('first_name')
     last_name = data.get('last_name')
     phone = data.get('phone')
     email = data.get('email')
@@ -629,18 +557,19 @@ async def process_driver_registration(message: types.Message, state: FSMContext)
     await state.set_state(DriverForm.edit_driver_profile)
     user_data = await get_driver_data(email, password)
     await state.update_data(userId=user_data[0])
-    await message.answer(f"You have successfully registerd{data}", 
+    await message.answer(f"You have successfully registerd{data}",
                          reply_markup=ReplyKeyboardMarkup(
                                 keyboard=[
                                     [
                                         KeyboardButton(text="Manage Profile"),
+                                        KeyboardButton(text="Ride History")
                                     ]
                                 ],
                                 resize_keyboard=True,
-                            )) 
+                            ))
 @form_router.message()
 async def unknown_command(message: types.Message):
-    await message.answer("Sorry, I didn't understand that. Let's start start again.\nPress the button below to start.", 
+    await message.answer("Sorry, I didn't understand that. Let's start start again.\nPress the button below to start.",
                          reply_markup=ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -649,8 +578,6 @@ async def unknown_command(message: types.Message):
         ],
         resize_keyboard=True
     ))
-
-
 
 async def main():
     dp.include_router(form_router)
