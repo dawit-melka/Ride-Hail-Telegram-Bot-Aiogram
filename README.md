@@ -49,11 +49,13 @@ Create a .env file in the project root and add your Telegram bot token:
 1) Run the bot:
 
     ```bash
-    python main.py
+    python ride_hail.py
     ```
 
 2) Interact with the bot on Telegram:
+```bash
         - Manage profile
         - Start a ride request as a passenger.
         - Accept or decline ride requests as a driver.
         - Access ride history
+```
